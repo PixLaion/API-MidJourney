@@ -22,14 +22,14 @@ def generateMJImage(prompt="") :
 
         response = requests.post("https://api.midjourneyapi.xyz/mj/v2/imagine", headers=headers, data=json.dumps(data))
         print(response.json())
-        fns = imagineMidjourney(response.json()['task_id'], prompt)
+        fns = fetchImage(response.json()['task_id'], prompt)
         return fns
     except Exception as e:
         print("error")
         return []
 
 
-def imagineMidjourney(taskId, prompt):
+def fetchImage(taskId, prompt):
     fileNames = []
     while True:
         # Send a GET request to ID URL
@@ -44,12 +44,15 @@ def imagineMidjourney(taskId, prompt):
         print(response.json()['status'])
 
         # # Check if the request was successful
+        res = response.json()
         if response.status_code == 200:
-            if response.json()['status'] == "finished" :
-                url = downloadImage(taskId, 1, prompt)
-                fileNames.append(url)
+            if res['status'] == "finished" :
+
+                urls = saveImage(res['task_result']['image_url'])
+                # url = downloadImage(taskId, 1, prompt)
+                fileNames = urls
                 break
-            elif response.json()['status'] == "failed" :
+            elif res['status'] == "failed" :
                 break
         else:
             print(f"Failed to retrieve image. Status code: {response.status_code}")
@@ -70,12 +73,12 @@ def downloadImage(taskId):
         print(result['status'])
         if result['status'] == "finished":
             print(result['task_result'])
-            file = saveImage(result['task_result']['image_url'])
+            files = saveImage(result['task_result']['image_url'])
 
-            return result['task_result']['image_url']
+            return files
             # break
         elif result['status'] == "failed":
-            return 
+            return []
         
         time.sleep(4)
             
@@ -86,11 +89,12 @@ def saveImage(url, timestamp = datetime.now().strftime("%Y%m%d%H%M%S")):
         with open(f"generated/{timestamp}.png", "wb") as file:
             file.write(res.content)
         
-        splitImage(f"generated/{timestamp}.png")
-        return f"generated/{timestamp}.png"
-    return ""
+        urls = splitImage(f"generated/{timestamp}.png")
+        return urls
+    return []
 
 def splitImage(url):
+    urls = []
     img = Image.open(url)  # Replace with your image path
 
     # Calculate the width and height of each split
@@ -111,13 +115,14 @@ def splitImage(url):
     bottom_left.save(f"generated/{timestamp}_3.png")
     bottom_right.save(f"generated/{timestamp}_4.png")
 
+    urls.append(f"generated/{timestamp}_1.png")
+    urls.append(f"generated/{timestamp}_2.png")
+    urls.append(f"generated/{timestamp}_3.png")
+    urls.append(f"generated/{timestamp}_4.png")
+
+    return urls
+
 urls = generateMJImage(
     prompt="Create a digital painting of a serene and mystical forest at twilight. The forest is illuminated by the soft glow of fireflies, with ancient trees towering into the sky. Their trunks are twisted and covered in luminous moss and delicate ivy. A gentle stream meanders through the forest, reflecting the last rays of the setting sun. In the background, a quaint wooden cabin with a thatched roof emits a warm light from its windows, suggesting a cozy refuge in the heart of the woods. The sky above is a gradient of deep indigo and violet, with the first stars of the night beginning to twinkle. A majestic owl is perched on a gnarled branch, surveying the enchanting scene.")
 
 print(urls)
-
-splitImage("generated/20240215011537.png")
-# Example Prompts
-
-# Create a digital painting of a serene and mystical forest at twilight. The forest is illuminated by the soft glow of fireflies, with ancient trees towering into the sky. Their trunks are twisted and covered in luminous moss and delicate ivy. A gentle stream meanders through the forest, reflecting the last rays of the setting sun. In the background, a quaint wooden cabin with a thatched roof emits a warm light from its windows, suggesting a cozy refuge in the heart of the woods. The sky above is a gradient of deep indigo and violet, with the first stars of the night beginning to twinkle. A majestic owl is perched on a gnarled branch, surveying the enchanting scene.
-# Envision a futuristic cityscape at dawn, as seen from a high vantage point. The architecture is a blend of hyper-modern skyscrapers with sleek, reflective surfaces and eco-friendly green roofs teeming with lush vegetation. Hover cars and drones zip through the air, following invisible traffic lanes, while pedestrians move along floating walkways that connect the buildings at various levels. The sky is painted with hues of soft pink and orange, signaling the break of day, and the city is coming to life with the gentle hum of advanced technology. In the foreground, a large, transparent dome houses a vibrant public park, where people and robots coexist peacefully. The entire scene is a harmonious fusion of nature and technology, symbolizing a sustainable and advanced society.
